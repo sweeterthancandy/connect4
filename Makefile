@@ -2,8 +2,9 @@
 CXX=clang++
 CXXFLAGS=-std=c++14 -ggdb -O0 -Wno-switch
 LDFLAGS=-lgtest
+CPPFLAGS=-Iinclude
 
-connect4:
+ConnectFour:
 
 %.png: %.dot
 	dot -Grankdir=LR -Tpng -o $@ $<
