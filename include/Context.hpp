@@ -5,6 +5,9 @@
 #include "InputOutput.hpp"
 
 struct GameContext{
+        explicit GameContext(Board const& board):
+                board_{board}
+        {}
         auto BoardHeight()const{
                 return board_.Height();
         }
@@ -52,6 +55,9 @@ struct GameContext{
                 io.Display(board_);
         }
         auto GetCtrl()const{ return ctrl_; }
+        auto Evaluate(ConnectFourLogic const& logic)const{
+                return logic.Evaluate(board_);
+        }
 private:
         Board board_;
         Player turn_{Player_Hero};

@@ -54,36 +54,9 @@
 
 
 
-struct Node{
-        explicit Node(GameContext ctx):ctx_{std::move(ctx)}{}
-        auto const& Ctx()const{ return ctx_; }
-        void AddEdge(unsigned x, Node* n){
-                edges_.emplace_back(x,n);
-        }
-private:
-
-        GameContext ctx_;
-        std::vector< std::tuple<unsigned, Node*> > edges_;
-};
 
 
 
-
-struct GameTree{
-private:
-        Node* start_;
-};
-
-struct GameTreeGenerator{
-        template<class F>
-        void Generate(Board const& initial, F gen){
-        }
-};
-
-
-struct ConnectFourEval{
-        Eval Evaluate(Board const& board)const;
-};
 
 
 

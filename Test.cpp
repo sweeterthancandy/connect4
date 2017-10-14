@@ -66,9 +66,27 @@ TEST(EvalTest,Eval){
                 #endif
                 EXPECT_EQ(std::get<1>(item), e) << std::get<0>(item);
         }
+}
 
+TEST(Context, FinishConditions){
+        BoardInputOutput io;
+        ConnectFourLogic logic;
+        auto board = io.ParseBoard(5,4,"     "
+                                       "x0x0x"
+                                       "x0x0x"
+                                       "x0x0x").get();
+        GameContext proto{board};
+
+        auto _0 = proto;
+        _0.Place(logic, 0);
+        EXPECT_EQ( Ctrl_Finish, _0.Ctx().GetCtrl());
+        
+        auto _1 = proto;
+        _1.Place(logic, 1);
+        EXPECT_EQ( Ctrl_PlayerMove, _1.Ctx().GetCtrl());
 
 }
+
 
 int main(int argc, char **argv) {
           ::testing::InitGoogleTest(&argc, argv);

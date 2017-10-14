@@ -1,10 +1,49 @@
 #include "ConnectFour.hpp"
 
-void Driver0(){
+struct Node;
+
+// This is for sugar
+// TODO, we using invariants (expliting symetric, inverse mappings,
+// can add flags for inverses etc here, reduce node set by ~4
+
+struct Edge{
+        explicit Edge(char idx, Node* node)
+                :idx_{idx}, node_{node}
+        {}
+        auto Idx()const { return idx_; }
+        auto GetNode()const{ return node_; }
+private:
+        char idx_;
+        Node* node_;
+};
+
+struct Node{
+        explicit Node(GameContext ctx):ctx_{std::move(ctx)}{}
+        auto const& Ctx()const{ return ctx_; }
+        void AddEdge(char x, Node* n){
+                edges_.emplace_back(x,n);
+        }
+        auto begin()const{ return edges_.begin(); }
+        auto end()const{ return edges_.end(); }
+        bool IsTerminal()const{ return edges_.size()==0; }
+private:
+
+        GameContext ctx_;
+        std::vector< Edge > edges_;
+};
+
+struct GameTree{
+        explicit GameTree(Node* start):start_{start}{}
+        Node* GetStart(){ return start_; }
+private:
+        Node* start_;
+};
+
+GameTree GenerateGameTree(Board const& board = Board{}){
         ConnectFourLogic logic;
         std::map<decltype(std::declval<GameContext>().Hash()), Node*> nodes;
 
-        auto start = new Node{GameContext{}};
+        auto start = new Node{GameContext{board}};
         std::vector<Node*> stack{start};
 
         nodes[start->Ctx().Hash()] = start;
@@ -15,8 +54,8 @@ void Driver0(){
                 auto const& ctx{ptr->Ctx()};
 
                 if( ptr->Ctx().GetCtrl() == Ctrl_Finish ){
-                        //std::cout << "Finished\n";
-                        //ptr->Ctx().Display();
+                        std::cout << "Finished\n";
+                        ptr->Ctx().Display();
                         continue;
                 }
 
@@ -47,14 +86,104 @@ void Driver0(){
                 if( nodes.size() % 100 == 0 )
                         PRINT( nodes.size() );
         }
-
-
+        
         PRINT( nodes.size() );
         PRINT( stack.size() );
 
+        return GameTree{start};
 }
 
 
+struct NodeMarker{
+        enum Marking{
+                Marked_Win  = 1,
+                Marked_Lose = 2,
+                Marked_Draw = 4,
+        };
+
+        void Run(GameTree& root){
+                ConnectFourLogic logic;
+                std::vector< Node const* > ticker = { root.GetStart() };
+                for( ; ticker.size(); ){
+                        auto ptr = ticker.back();
+                        ticker.pop_back();
+
+                        if( ptr->IsTerminal()){
+                                switch( ptr->Ctx().Evaluate(logic) ){
+                                case Eval_NotFinished:
+                                        throw std::domain_error("bad game tree");
+                                case Eval_Hero:
+                                        marks_.emplace(ptr, Marked_Win);
+                                        break;
+                                case Eval_Villian:
+                                        marks_.emplace(ptr, Marked_Lose);
+                                        break;
+                                case Eval_Draw:
+                                        marks_.emplace(ptr, Marked_Draw);
+                                        break;
+                                }
+                                continue;
+                        }
+
+                        // Go thought all edges, if there are any unmarked, 
+                        // enqueue marking, and enqueue node for later processing
+                        bool process = false;
+                        for( auto const& edge : *ptr ){
+                                if( marks_.count(edge.GetNode()) == 0 ){
+                                        if( process == true ){
+                                                // reque myself
+                                                ticker.emplace_back( ptr );
+                                                process = false;
+                                        }
+                                        ticker.emplace_back( edge.GetNode() );
+                                }
+                        }
+                        if( process ){
+                                static std::map<Marking, int> order = [](){
+                                        Marking precedence[] = {
+                                                Marked_Win,
+                                                Marked_Win  | Marked_Draw,
+                                                Marked_Draw,
+                                                Marked_Win  | Marked_Draw | Marked_Lose,
+                                                Marked_Win  | Marked_Lose,
+                                                Marked_Draw | Marked_Lose,
+                                                Marked_Lose,
+                                        };
+                                        std::map<Marking, int> ret;
+                                        int index = 0;
+                                        for( auto mark : precedence ){
+                                                ret.emplace(mark, index++);
+                                        }
+                                        return std::move(ret);
+                                }();
+                                std::vector<Marking> aux;
+                                for( auto const& edge : *ptr ){
+                                        aux.emplace_back( marks_[edge] );
+                                }
+                                std::sort( aux.cbegin(), aux.cend(), [&](auto left, auto right){
+                                });
+                                __next__:;
+                                }
+
+
+
+                        }
+
+
+                }
+                PRINT(marks_.size());
+        }
+private:
+        std::map<Node const*, Marking > marks_;
+};
+
 int main(){
-        Driver0();
+        BoardInputOutput io;
+        auto board = io.ParseBoard(5,4,"     "
+                                       "x0x0x"
+                                       "x0x0x"
+                                       "x0x0x");
+        auto root = GenerateGameTree(board.get());
+        NodeMarker marker;
+        marker.Run(root);
 }

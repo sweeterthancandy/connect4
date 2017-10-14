@@ -164,8 +164,13 @@ struct ConnectFourLogic{
                         }
                         __next__:;
                 }
-                        
-                return Eval_NotFinished;
+                for(int x=0;x!=board.Width();++x){
+                        for(int y=0;y!=board.Height();++y){
+                                if( board.Get(x,y) != Tile_Empty )
+                                        return Eval_NotFinished;
+                        }
+                }
+                return Eval_Draw;
         }
 };
 #endif // CONNECT_FOUR_GAME_LOGIC_HPP
