@@ -192,13 +192,14 @@ private:
 };
 
 int main(){
-        BoardInputOutput io;
-        auto board = io.ParseBoard(6,5,"      "
-                                       "      "
-                                       "      "
-                                       "      "
-                                       "      ");
-        auto root = GenerateGameTree(board.get());
+        //BoardInputOutput io;
+        //auto board = io.ParseBoard(6,5,"      "
+                                       //"      "
+                                       //"      "
+                                       //"      "
+                                       //"      ");
+        //auto root = GenerateGameTree(board.get());
+        auto root = GenerateGameTree();
         NodeMarker marker;
         marker.Run(root);
 

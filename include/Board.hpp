@@ -2,6 +2,7 @@
 #define CONNECT_FOUR_BOARD_HPP
 
 #include "Decl.hpp"
+
 #if 0
 struct Board{
         explicit Board(unsigned width, unsigned height)
@@ -108,24 +109,30 @@ template<size_t Width_, size_t Height_>
 struct GenericBoard{
         void Set(size_t x, size_t y, Tile t){
                 left_.Set(x,y,t);
-                right_.Set(Width_ - x - 1, y, t);
+                //right_.Set(Width_ - x - 1, y, t);
         }
         Tile Get(size_t x, size_t y)const{
                 return left_.Get(x,y);
         }
         auto Hash()const{
-                return std::min(left_.Hash(), right_.Hash() );
+                Detail::BoardImpl<Width_, Height_> mirror;
+                for(size_t x=0;x!=Width_;++x){
+                        for(size_t y=0;y!=Height_;++y){
+                                mirror.Set(Width_ -1 - x,y, left_.Get(x,y));
+                        }
+                }
+                return std::min(left_.Hash(), mirror.Hash() );
                 //return left_.Hash();
         }
         auto Width()const{ return Width_; }
         auto Height()const{ return Height_; }
 private:
         Detail::BoardImpl<Width_, Height_> left_;
-        Detail::BoardImpl<Width_, Height_> right_;
+        //Detail::BoardImpl<Width_, Height_> right_;
 };
 
 
-using Board = GenericBoard<6,5>;
+using Board = GenericBoard<5,5>;
 
 
 inline
