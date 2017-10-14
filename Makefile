@@ -1,6 +1,7 @@
 
 CXX=clang++
-CXXFLAGS=-std=c++14 -ggdb -O0
+CXXFLAGS=-std=c++14 -ggdb -O0 -Wno-switch
+LDFLAGS=-lgtest
 
 connect4:
 

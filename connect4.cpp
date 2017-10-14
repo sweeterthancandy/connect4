@@ -11,6 +11,8 @@
 #include <bitset>
 #include <boost/preprocessor.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/optional.hpp>
 
 #define PRINT_SEQ_detail(r, d, i, e) do{ std::cout << ( i ? ", " : "" ) << BOOST_PP_STRINGIZE(e) << " = " << (e); }while(0);
 #define PRINT_SEQ(SEQ) do{ BOOST_PP_SEQ_FOR_EACH_I( PRINT_SEQ_detail, ~, SEQ) std::cout << "\n"; }while(0)
@@ -43,6 +45,7 @@ enum Tile{
         Tile_Empty   = 0,
         Tile_Hero    = 1,
         Tile_Villian = 2,
+        Tile_NotATile = 3,
 };
 std::string TileToString(Tile e) {
         switch (e) {
@@ -110,12 +113,26 @@ private:
 namespace Detail{
         template<size_t Width, size_t Height>
         struct BoardImpl{
-                static constexpr size_t BitSize(){ return Width * Height; }
                 void Set(size_t x, size_t y, Tile t){
                         auto m = Map_(x,y);
-                        mask_.set(m);
-                        if( t == Tile_Hero )
+                        switch(t){
+                        case Tile_Hero:
+                                mask_.set(m);
                                 value_.set(m);
+                                break;
+                        case Tile_Villian:
+                                mask_.set(m);
+                                value_.reset(m);
+                                break;
+                        case Tile_Empty:
+                                mask_.reset(m);
+                                value_.reset(m);
+                                break;
+                        default:
+                                break;
+                        }
+                        //Debug();
+
                 }
                 Tile Get(size_t x, size_t y)const{
                         auto m = Map_(x,y);
@@ -128,7 +145,14 @@ namespace Detail{
                 auto Hash()const{
                         return std::make_tuple( mask_.to_ullong(), value_.to_ullong() );
                 }
+                void Debug()const{
+                        PRINT( mask_.to_string() );
+                        PRINT( value_.to_string() );
+                }
         private:
+                static constexpr size_t BitSize(){
+                        return Width * Height;
+                }
                 static constexpr size_t Map_(size_t x, size_t y){
                         return y * Width + x;
                 }
@@ -161,6 +185,18 @@ private:
 using Board = GenericBoard<5,4>;
 
 
+// returns the lowest (*this)(x, Level(x)) which is empty
+unsigned Level(Board const& board, unsigned idx){
+        unsigned y=0;
+        for(;y!=board.Height();++y){
+                if( board.Get(idx, y) == Tile_Empty)
+                        break;
+        }
+        return y;
+}
+bool CanPlace(Board const& board, unsigned idx){
+        return Level(board, idx) < board.Height();
+}
 
 enum Ctrl{
         Ctrl_PlayerMove,
@@ -179,65 +215,248 @@ enum Eval{
         Eval_Hero,
         Eval_Villian,
 };
+std::string EvalToString(Eval e) {
+        switch (e) {
+        case Eval_NotFinished:
+                return "Eval_NotFinished";
+        case Eval_Draw:
+                return "Eval_Draw";
+        case Eval_Hero:
+                return "Eval_Hero";
+        case Eval_Villian:
+                return "Eval_Villian";
+        default:
+                return "";
+        }
+}
 
 struct ConnectFourLogic{
-        Eval Evaluate(Board const& board)const{
-
-                auto match = [](char a, char b, char c, char d){
-                        return
-                                ( a == 'X' || a == 'O' ) &&
-                                a == b &&
-                                c == d &&
-                                a == c;
-                };
-                auto eval = [](char x){
-                        switch(x){
-                        case 'X':
-                                return Eval_Hero;
-                        case 'O':
-                                return Eval_Villian;
-                        default:
-                                return Eval_NotFinished;
+        struct SequenceConsumer{
+                Eval Consume(Tile t){
+                        if( t == last_ ){
+                                // Case we have 2 consective Hero or Villian
+                                ++count_;
+                                if( count_ == 4 && eval_ == Eval_NotFinished ){
+                                        switch(last_){
+                                        case Tile_Hero:
+                                                eval_ = Eval_Hero;
+                                                break;
+                                        case Tile_Villian:
+                                                eval_ = Eval_Villian;
+                                                break;
+                                        }
+                                }
+                        } else if( t == Tile_Empty){
+                                // Case we run into a blank
+                                count_ = 0;
+                                last_ = Tile_NotATile;
+                        } else{
+                                // Case we start a new run
+                                count_ = 1;
+                                last_ = t;
                         }
+                        return Get();
+                }
+                Eval Get()const{
+                        return eval_;
+                }
+        private:
+                Tile last_{Tile_NotATile};
+                size_t count_{0};
+                Eval eval_{Eval_NotFinished};
+        };
+
+        Eval Evaluate(Board const& board)const{
+                enum Group{
+                        /*
+                               /\
+                                |
+                                |
+                                +--------->
+                        */
+                        Left,
+                        Bottom,
+                        /*
+                                <---------+
+                                          |
+                                          |
+                                         \/
+                        */
+
+                        Right,
+                        Top,
                 };
+                /* for dx, dy, theres a difference 
+                   between (1,-1) and (-1,1), because
+                   we have the sequence.
+                        (a,b), (a+dx, b+dy), (a+2*dx,b+2*dy)...,
+                   where we start at either the left, the bottom
+                        (0,0),...(a,b),...
+                  
+                       /\
+                        |
+                        |
+                        +--------->
 
+                */
+                  
+                  
+                     
+                struct Ticker{
+                        Group group;
+                        int dx;
+                        int dy;
+                };
+                Ticker ticker[] = {
+                        /*
+                                | | | | | | | |
+                                | | | | | | | |
+                                | | | | | | | |
+                                | | | | | | | |
+                                | | | | | | | |
+                                | |X|X|X|X| | |
+                        */
+                        { Left,    1,  0 },
+                        /*
+                                | | | | | | | |
+                                | | |X| | | | |
+                                | | |X| | | | |
+                                | | |X| | | | |
+                                | | |X| | | | |
+                                | | | | | | | |
+                        */
+                        { Bottom,  0,  1 },
+                        /*
+                                | | | | | | |X|
+                                | | | | | |X| |
+                                | | | | |X| | |
+                                | | | |X| | | |
+                                | | | | | | | |
+                                | | | | | | | |
+                        */
+                        { Left,    1,  1 },
+                        { Bottom,  1,  1 },
+                        /*
+                                | | | | | | | |
+                                | |X| | | | | |
+                                | | |X| | | | |
+                                | | | |X| | | |
+                                | | | | |X| | |
+                                | | | | | | | |
+                        */
+                        { Left,   1, -1 },
+                        { Top  ,  1, -1 },
+                }; 
 
-                // long ways
-                for(unsigned x=0;x < board.Width(); ++x){
-                        for(unsigned y=0;y < board.Height(); ++y){
-                                bool cond_hori = x + 3 < board.Width();
-                                bool cond_vert = y + 3 < board.Height();
+                for( auto const& decl : ticker ){
+                        int start_x = 0;
+                        int start_y = 0;
 
-                                if( cond_hori ){
-                                        if( match(board.Get(x+0,y+0),
-                                                  board.Get(x+1,y+0),
-                                                  board.Get(x+2,y+0),
-                                                  board.Get(x+3,y+0))){
-                                                return eval(board.Get(x,y));
+                        switch(decl.group){
+                        case Top:
+                                start_y = board.Height() -1; 
+                                break;
+                        case Right:
+                                start_x = board.Width() -1; 
+                                break;
+                        }
+
+                        for(;;){
+                                SequenceConsumer seq;
+                                for(int i=0;;++i){
+                                        auto x =  start_x + i * decl.dx;
+                                        auto y =  start_y + i * decl.dy;
+
+                                        if( ! ( 0 <= x && x < board.Width() &&
+                                                0 <= y && y < board.Height() ) ){
+                                                break;
                                         }
-
+                                        seq.Consume( board.Get(x,y ) );
                                 }
-                                if( cond_vert ){
-                                        if( match(board.Get(x+0,y+0),
-                                                  board.Get(x+0,y+1),
-                                                  board.Get(x+0,y+2),
-                                                  board.Get(x+0,y+3))){
-                                                return eval(board.Get(x,y));
-                                        }
+                                if( seq.Get() != Eval_NotFinished )
+                                        return seq.Get();
 
+                                switch(decl.group){
+                                case Left:
+                                case Right:
+                                        ++start_y;
+                                        if( start_y == board.Height() )
+                                                goto __next__;
+                                        break;
+                                case Bottom:
+                                case Top:
+                                        ++start_x;
+                                        if( start_x == board.Width() )
+                                                goto __next__;
+                                        break;
                                 }
-                                if( cond_hori && cond_vert ){
-                                        if( match(board.Get(x+0,y+0),
-                                                  board.Get(x+1,y+1),
-                                                  board.Get(x+2,y+2),
-                                                  board.Get(x+3,y+3))){
-                                                return eval(board.Get(x,y));
-                                        }
+                        }
+                        __next__:;
+                }
+                        
+                return Eval_NotFinished;
+        }
+};
 
+struct BoardInputOutput{
+        void Display(Board const& board, std::ostream& ostr = std::cout)const{
+                for(unsigned y=board.Height();y!=0;){
+                        --y;
+                        for(unsigned x=0;x!=board.Width();++x){
+                                ostr << '|' << TileToString(board.Get(x,y));
+                        }
+                        ostr << "|\n";
+                }
+                ostr << "\n";
+        }
+        boost::optional<Board> ParseBoard(size_t width, size_t height, std::string str)const{
+                boost::erase_all(str, "|");
+                boost::erase_all(str, "\n");
+                if( str.size() != width*height){
+                        return boost::none;
+                }
+                Board board;
+                auto iter = str.begin();
+                for(size_t y=height;y!=0;){
+                        --y;
+                        for(size_t x=0;x!=width;++x){
+                                auto t = ParseTile(*iter);
+                                if( t == Tile_NotATile){
+                                        std::cerr << "Tile " << *iter << " is not a tile\n";
+                                        return boost::none;
                                 }
+                                board.Set(x,y,t);
+                                ++iter;
                         }
                 }
-                return Eval_NotFinished;
+                return std::move(board);
+        }
+        Tile ParseTile(char c)const{
+                switch(c){
+                case 'X':
+                case 'x':
+                        return Tile_Hero;
+                case 'O':
+                case 'o':
+                case '0':
+                        return Tile_Villian;
+                case ' ':
+                        return Tile_Empty;
+                default:
+                        return Tile_NotATile;
+                }
+        }
+        std::string TileToString(Tile t)const{
+                switch (t) {
+                case Tile_Empty:
+                        return " ";
+                case Tile_Hero:
+                        return "X";
+                case Tile_Villian:
+                        return "O";
+                default:
+                        return "N";
+                }
         }
 };
 
@@ -277,40 +496,16 @@ struct GameContext{
         }
         auto const& GetBoard()const{ return board_; }
         
-        // returns the lowest (*this)(x, Level(x)) which is empty
-        unsigned Level(unsigned idx)const{
-                unsigned y=0;
-                for(;y!=board_.Height();++y){
-                        if( board_.Get(idx, y) == Tile_Empty)
-                                break;
-                }
-                //PRINT_SEQ(("Level")(y));
-                return y;
-        }
-        unsigned Full(unsigned idx)const{
-                auto ret =  Level(idx) == board_.Height();
-                PRINT_SEQ(("Full")(idx)(ret));
-                return ret;
-        }
-        bool CanPlace(unsigned idx){
-                return Level(idx) == BoardHeight();
-        }
         void Place(ConnectFourLogic const& logic, unsigned idx){
-                board_.Set(idx, Level(idx), GetCurrentTile() );
+                board_.Set(idx, Level(board_, idx), GetCurrentTile() );
                 NextPlayer();
                 auto e = logic.Evaluate(board_);
                 if( e != Eval_NotFinished )
                         ctrl_ = Ctrl_Finish;
         }
         void Display()const{
-                for(unsigned y=board_.Height();y!=0;){
-                        --y;
-                        for(unsigned x=0;x!=board_.Width();++x){
-                                std::cout << '|' << TileToString(board_.Get(x,y));
-                        }
-                        std::cout << "|\n";
-                }
-                std::cout << "\n";
+                static BoardInputOutput io;
+                io.Display(board_);
         }
         auto GetCtrl()const{ return ctrl_; }
 private:
@@ -354,7 +549,7 @@ struct ConnectFourEval{
 
 
 
-int main(){
+void Driver0(){
         ConnectFourLogic logic;
         std::map<decltype(std::declval<GameContext>().Hash()), Node*> nodes;
 
@@ -370,6 +565,7 @@ int main(){
 
                 if( ptr->Ctx().GetCtrl() == Ctrl_Finish ){
                         std::cout << "Finished\n";
+                        ptr->Ctx().Display();
                         continue;
                 }
 
@@ -377,8 +573,7 @@ int main(){
 
                 // try to place a tile
                 for( unsigned x=0;x!=ctx.BoardWidth();++x){
-                        if( ctx.Full(x) ){
-                                std::cout << "full\n";
+                        if( ! CanPlace( ctx.GetBoard(), x) ){
                                 continue;
                         }
                         //ctx.Display();
@@ -393,7 +588,7 @@ int main(){
                                 nodes.emplace(h, tmp);
                                 stack.push_back(tmp);
                                 iter = nodes.find(h);
-                                tmp->Ctx().Display();
+                                //tmp->Ctx().Display();
                         }
 
                         ptr->AddEdge( x, iter->second);
@@ -407,3 +602,104 @@ int main(){
         PRINT( stack.size() );
 
 }
+
+#include <gtest/gtest.h>
+
+TEST(EvalTest,Eval){
+        BoardInputOutput io;
+        ConnectFourLogic logic;
+
+        std::vector<std::tuple<std::string, Eval> > ticker = {
+                {
+                        "|     |"
+                        "|     |"
+                        "|     |"
+                        "|     |", Eval_NotFinished},
+                {
+                        "| XXXX|"
+                        "|     |"
+                        "|     |"
+                        "|     |", Eval_Hero},
+                {
+                        "|XXXX |"
+                        "|     |"
+                        "|     |"
+                        "|     |", Eval_Hero},
+                {
+                        "|     |"
+                        "|     |"
+                        "|     |"
+                        "|OXXXX|", Eval_Hero},
+                {
+                        "|     |"
+                        "|     |"
+                        "|     |"
+                        "|OXOXX|", Eval_NotFinished},
+                {
+                        "|  X  |"
+                        "|  X  |"
+                        "|  X  |"
+                        "|  X  |", Eval_Hero},
+                {
+                        "|X    |"
+                        "| X   |"
+                        "|  X  |"
+                        "|   X |", Eval_Hero},
+                {
+                        "|    X|"
+                        "|   X |"
+                        "|  X  |"
+                        "| X   |", Eval_Hero},
+                {
+                        "|   X |"
+                        "|  X  |"
+                        "| X   |"
+                        "|X    |", Eval_Hero},
+                {
+                        "|   X |"
+                        "|     |"
+                        "| X   |"
+                        "|X    |", Eval_NotFinished},
+        };
+        for( auto const& item : ticker){
+                auto board = io.ParseBoard(5,4, std::get<0>(item)).get();
+                auto e = logic.Evaluate(board);
+                #if 0
+                io.Display(board);
+                PRINT(EvalToString(e));
+                #endif
+                EXPECT_EQ(std::get<1>(item), e) << std::get<0>(item);
+        }
+
+#if 0
+
+        };
+
+        std::string input = 
+                            
+                            
+                            ;
+        auto board = io.ParseBoard(5,4, input).get();
+        io.Display(board);
+
+        PRINT( Level(board, 0 ));
+        PRINT( Level(board, 1 ));
+        PRINT( Level(board, 2 ));
+        PRINT( Level(board, 3 ));
+        PRINT( Level(board, 4 ));
+        #endif
+
+
+
+
+}
+
+//int main(){
+        //Driver0();
+//}
+
+int main(int argc, char **argv) {
+          ::testing::InitGoogleTest(&argc, argv);
+            return RUN_ALL_TESTS();
+}
+
