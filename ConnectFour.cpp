@@ -54,8 +54,8 @@ GameTree GenerateGameTree(Board const& board = Board{}){
                 auto const& ctx{ptr->Ctx()};
 
                 if( ptr->Ctx().GetCtrl() == Ctrl_Finish ){
-                        std::cout << "Finished\n";
-                        ptr->Ctx().Display();
+                        //std::cout << "Finished\n";
+                        //ptr->Ctx().Display();
                         continue;
                 }
 
@@ -96,6 +96,7 @@ GameTree GenerateGameTree(Board const& board = Board{}){
 
 struct NodeMarker{
         enum Marking{
+                Marked_Zero = 0,
                 Marked_Win  = 1,
                 Marked_Lose = 2,
                 Marked_Draw = 4,
@@ -111,6 +112,7 @@ struct NodeMarker{
                         if( ptr->IsTerminal()){
                                 switch( ptr->Ctx().Evaluate(logic) ){
                                 case Eval_NotFinished:
+                                        //ptr->Ctx().Display();
                                         throw std::domain_error("bad game tree");
                                 case Eval_Hero:
                                         marks_.emplace(ptr, Marked_Win);
@@ -125,9 +127,10 @@ struct NodeMarker{
                                 continue;
                         }
 
+
                         // Go thought all edges, if there are any unmarked, 
                         // enqueue marking, and enqueue node for later processing
-                        bool process = false;
+                        bool process = true;
                         for( auto const& edge : *ptr ){
                                 if( marks_.count(edge.GetNode()) == 0 ){
                                         if( process == true ){
@@ -138,9 +141,25 @@ struct NodeMarker{
                                         ticker.emplace_back( edge.GetNode() );
                                 }
                         }
-                        if( process ){
-                                static std::map<Marking, int> order = [](){
-                                        Marking precedence[] = {
+                        if( ! process ){
+                                continue;
+                        }
+                        if( ptr->Ctx().ActivePlayer() == Player_Villian ){
+                                int mark = 0;
+                                for( auto const& edge : *ptr ){
+                                        mark |= marks_[edge.GetNode()];
+                                }
+                                marks_[ptr] = mark;
+                                continue;
+                        } 
+
+                        std::vector<int> aux;
+                        for( auto const& edge : *ptr ){
+                                aux.emplace_back( marks_[edge.GetNode()] );
+                        }
+                        std::sort( aux.begin(), aux.end(), [&](auto left, auto right){
+                                static std::map<int, int> order = [](){
+                                        int precedence[] = {
                                                 Marked_Win,
                                                 Marked_Win  | Marked_Draw,
                                                 Marked_Draw,
@@ -149,41 +168,40 @@ struct NodeMarker{
                                                 Marked_Draw | Marked_Lose,
                                                 Marked_Lose,
                                         };
-                                        std::map<Marking, int> ret;
+                                        std::map<int, int> ret;
                                         int index = 0;
                                         for( auto mark : precedence ){
                                                 ret.emplace(mark, index++);
                                         }
                                         return std::move(ret);
                                 }();
-                                std::vector<Marking> aux;
-                                for( auto const& edge : *ptr ){
-                                        aux.emplace_back( marks_[edge] );
-                                }
-                                std::sort( aux.cbegin(), aux.cend(), [&](auto left, auto right){
-                                });
-                                __next__:;
-                                }
-
-
-
-                        }
-
+                                return order[left] < order[right];
+                        });
+                        marks_[ptr] = aux.front();
 
                 }
+
+
                 PRINT(marks_.size());
         }
+        auto Lookup(Node const* ptr)const{
+                return marks_.find(ptr)->second;
+        }
 private:
-        std::map<Node const*, Marking > marks_;
+        std::map<Node const*, int > marks_;
 };
 
 int main(){
         BoardInputOutput io;
         auto board = io.ParseBoard(5,4,"     "
-                                       "x0x0x"
-                                       "x0x0x"
-                                       "x0x0x");
+                                       "     "
+                                       "     "
+                                       "     ");
         auto root = GenerateGameTree(board.get());
         NodeMarker marker;
         marker.Run(root);
+
+        PRINT( marker.Lookup(root.GetStart() ) );
+
+
 }

@@ -41,6 +41,7 @@ struct GameContext{
                 return std::make_tuple( board_.Hash(), turn_, ctrl_);
 
         }
+        auto ActivePlayer()const{ return turn_; }
         auto const& GetBoard()const{ return board_; }
         
         void Place(ConnectFourLogic const& logic, unsigned idx){

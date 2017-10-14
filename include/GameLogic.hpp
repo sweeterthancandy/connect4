@@ -166,7 +166,7 @@ struct ConnectFourLogic{
                 }
                 for(int x=0;x!=board.Width();++x){
                         for(int y=0;y!=board.Height();++y){
-                                if( board.Get(x,y) != Tile_Empty )
+                                if( board.Get(x,y) == Tile_Empty )
                                         return Eval_NotFinished;
                         }
                 }
