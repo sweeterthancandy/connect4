@@ -62,6 +62,9 @@ GameTree GenerateGameTree(Board const& board = Board{}){
                         continue;
                 }
 
+                if( PopCount( ptr->Ctx().GetBoard() ) == 20 )
+                        continue;
+
                 //ptr->Ctx().Display();
 
                 // try to place a tile

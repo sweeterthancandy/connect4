@@ -17,11 +17,11 @@ endif()
 
 
 
-find_package(Boost REQUIRED )
+find_package(Boost REQUIRED COMPONENTS system timer)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
 include_directories(include)
 
 add_executable(ConnectFour ConnectFour.cpp)
-target_link_libraries(ConnectFour)
+target_link_libraries(ConnectFour ${Boost_LIBRARIES})

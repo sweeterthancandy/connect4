@@ -1,7 +1,10 @@
 #include "ConnectFour.hpp"
 #include "Graph.hpp"
 
-int main(){
+#include <set>
+#include <boost/timer/timer.hpp>
+
+void Driver0(){
         //BoardInputOutput io;
         //auto board = io.ParseBoard(6,5,"      "
                                        //"      "
@@ -18,4 +21,147 @@ int main(){
         prof.Run(root);
 
 
+}
+
+#include <boost/pool/object_pool.hpp>
+
+/*
+        This represents the level of the board,
+        ie for 
+                (width,height,n)
+                
+                (7,6,0) => P =  {(0,0,0,0,0,0,0)}
+                (7,6,1) => P =  {(1,0,0,0,0,0,0),
+                                 (0,1,0,0,0,0,0),
+                                 (0,1,1,0,0,0,0),
+                                 ...
+                                 }
+                (7,6,2) => P =  {(1,0,0,0,0,0,0),
+                                 (0,1,0,0,0,0,0),
+                                 (0,1,1,0,0,0,0),
+                                 ...
+                                 }
+ */
+
+template<class T>
+std::string tostring(T const& iter){
+        std::stringstream sstr;
+        sstr << "{";
+        bool first = false;
+        for( auto const& _ : iter){
+                sstr
+                        << ( first ? (first=false,"") : ", ")
+                        << (int)_;
+        }
+        sstr << "}";
+        return sstr.str();
+}
+
+struct LevelCombinationSet{
+        using CombinationType = std::vector<char>;
+
+        explicit LevelCombinationSet(char width, char height, char n)
+                :width_{width}
+                ,height_{height}
+        {
+                CombinationType iter(width, 0 );
+                Recurse_( iter, n );
+                #if 0
+                char tmp = n; 
+                for(auto& _ : iter){
+                        _ = std::min(height, tmp);
+                        tmp -= _;
+                        if( _ == 0 )
+                                break;
+                }
+                #endif
+
+        }
+        auto begin()const{ return set_.begin(); }
+        auto end()const{ return set_.end(); }
+private:
+        void Recurse_( std::vector<char> proto, char n ){
+                if( n == 0 ){
+                        set_.insert(std::move(proto));
+                        return;
+                }
+                for(size_t i=0;i!=proto.size();++i){
+                        if( ! (proto[i] < height_ ) )
+                                continue;
+                        auto next = proto;
+                        ++next[i];
+                        Recurse_(std::move(next), n-1);
+                }
+        }
+        char width_;
+        char height_;
+        std::set<CombinationType> set_;
+};
+
+std::string Bits(unsigned long long val){
+        std::bitset<sizeof(val)*8> aux{val};
+        return aux.to_string();
+}
+
+void PermuattionTest(){
+        boost::object_pool<Node> pool;
+
+        #if 0
+        for(int k=0;;++k){
+                boost::timer::auto_cpu_timer at;
+                std::vector<int> proto(7*6, 0);
+                for(int i=0;i!=k;++i)
+                        proto[proto.size()-1-i] = 1;
+                for(;;){
+                        if( ! std::next_permutation(proto.begin(), proto.end()))
+                                break;
+                }
+                PRINT(k);
+                std::cout << "--------------\n";
+        }
+        #endif
+        unsigned long long upper = 1;
+        for(int i=0;i!=6*7;++i)
+                upper *= 2;
+        for(int k=0;;++k){
+                boost::timer::auto_cpu_timer at;
+                unsigned long long iter = 0;
+                int n = 0;
+                PRINT_SEQ((k)(iter)(upper));
+                for(;iter < upper;++iter){
+                        if( __builtin_popcountll(iter) == k ){
+                                PRINT_SEQ( (Bits(iter))(__builtin_popcountll(iter)) );
+                                ++n;
+                        }
+                }
+                PRINT_SEQ((upper)(k)(n));
+        }
+
+        #if 0
+        LevelCombinationSet ps(7,6,10);
+        for( auto const& _ : ps )
+                PRINT( tostring(_));
+                #endif
+        /*
+                want sequence
+                        s1 .. sn
+                where there are only K sn for sn = Empty.
+                This imples can take sequence
+                        t1 ... tm  where m = n -k
+                where ti \in {Hero, Villian},
+                        and take 
+                        q1 .. qk
+                are index positions for inset the Empy ones
+
+         */
+
+
+}
+
+
+int main(){
+        auto root = GenerateGameTree();
+
+        Profiler prof;
+        prof.Run(root);
 }

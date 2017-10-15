@@ -132,7 +132,7 @@ private:
 };
 
 
-using Board = GenericBoard<5,4>;
+using Board = GenericBoard<7,6>;
 
 
 inline
@@ -149,4 +149,17 @@ inline
 bool CanPlace(Board const& board, unsigned idx){
         return Level(board, idx) < board.Height();
 }
+
+// returns number of tiles different from Empty
+inline
+unsigned PopCount(Board const& board){
+        unsigned ret=0;
+        for(size_t x=0;x!=board.Width();++x){
+                for(size_t y=0;y!=board.Height();++y){
+                        ret += ( board.Get(x,y) == Tile_Empty ? 0 : 1 );
+                }
+        }
+        return ret;
+}
+
 #endif // CONNECT_FOUR_BOARD_HPP
