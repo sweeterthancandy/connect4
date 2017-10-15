@@ -7,58 +7,134 @@ TEST(EvalTest,Eval){
 
         std::vector<std::tuple<std::string, Eval> > ticker = {
                 {
-                        "|     |"
-                        "|     |"
-                        "|     |"
-                        "|     |", Eval_NotFinished},
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |", Eval_NotFinished},
                 {
-                        "| XXXX|"
-                        "|     |"
-                        "|     |"
-                        "|     |", Eval_Hero},
+                        "| XXXX  |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |", Eval_Hero},
                 {
-                        "|XXXX |"
-                        "|     |"
-                        "|     |"
-                        "|     |", Eval_Hero},
+                        "|XXXX   |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |", Eval_Hero},
                 {
-                        "|     |"
-                        "|     |"
-                        "|     |"
-                        "|OXXXX|", Eval_Hero},
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|OXXXX  |", Eval_Hero},
                 {
-                        "|     |"
-                        "|     |"
-                        "|     |"
-                        "|OXOXX|", Eval_NotFinished},
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|OXOXX  |", Eval_NotFinished},
                 {
-                        "|  X  |"
-                        "|  X  |"
-                        "|  X  |"
-                        "|  X  |", Eval_Hero},
+                        "|       |"
+                        "|       |"
+                        "|  X    |"
+                        "|  X    |"
+                        "|  X    |"
+                        "|  X    |", Eval_Hero},
                 {
-                        "|X    |"
-                        "| X   |"
-                        "|  X  |"
-                        "|   X |", Eval_Hero},
+                        "|       |"
+                        "|       |"
+                        "|X      |"
+                        "| X     |"
+                        "|  X    |"
+                        "|   X   |", Eval_Hero},
                 {
-                        "|    X|"
-                        "|   X |"
-                        "|  X  |"
-                        "| X   |", Eval_Hero},
+                        "|       |"
+                        "|       |"
+                        "|    X  |"
+                        "|   X   |"
+                        "|  X    |"
+                        "| X     |", Eval_Hero},
                 {
-                        "|   X |"
-                        "|  X  |"
-                        "| X   |"
-                        "|X    |", Eval_Hero},
+                        "|       |"
+                        "|       |"
+                        "|   X   |"
+                        "|  X    |"
+                        "| X     |"
+                        "|X      |", Eval_Hero},
                 {
-                        "|   X |"
-                        "|     |"
-                        "| X   |"
-                        "|X    |", Eval_NotFinished},
+                        "|       |"
+                        "|       |"
+                        "|   X   |"
+                        "|       |"
+                        "| X     |"
+                        "|X      |", Eval_NotFinished},
+                {
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|OOOO   |"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "| OOOO  |"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|  OOOO |"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|   OOOO|"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "|OOOO   |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "| OOOO  |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "|       |"
+                        "|  OOOO |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|XXOOXXX|", Eval_Villian},
+                {
+                        "|   OOOO|"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|       |"
+                        "|XXOOXXX|", Eval_Villian},
         };
         for( auto const& item : ticker){
-                auto board = io.ParseBoard(5,4, std::get<0>(item)).get();
+                auto board = io.ParseBoard<GenericBoard<7,6> >(std::get<0>(item)).get();
                 auto e = logic.Evaluate(board);
                 #if 0
                 io.Display(board);
@@ -68,6 +144,7 @@ TEST(EvalTest,Eval){
         }
 }
 
+#if 0
 TEST(Context, FinishConditions){
         BoardInputOutput io;
         ConnectFourLogic logic;
@@ -86,6 +163,7 @@ TEST(Context, FinishConditions){
         EXPECT_EQ( Ctrl_PlayerMove, _1.Ctx().GetCtrl());
 
 }
+#endif
 
 
 int main(int argc, char **argv) {

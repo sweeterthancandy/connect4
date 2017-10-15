@@ -74,9 +74,9 @@ GameTree GenerateGameTree(Board const& board = Board{}){
 
                 // try to place a tile
                 for( unsigned x=0;x!=ctx.BoardWidth();++x){
-                        if( ! CanPlace( ctx.GetBoard(), x) ){
-                                continue;
-                        }
+                        //if( ! CanPlace( ctx.GetBoard(), x) ){
+                                //continue;
+                        //}
                         //ctx.Display();
                         GameContext nextCtx{ctx};
                         nextCtx.Place(logic, x);
@@ -104,14 +104,14 @@ GameTree GenerateGameTree(Board const& board = Board{}){
         return GameTree{start};
 }
 
+enum Marking{
+        Marked_Zero = 0,
+        Marked_Win  = 1,
+        Marked_Lose = 2,
+        Marked_Draw = 4,
+};
 
 struct NodeMarker{
-        enum Marking{
-                Marked_Zero = 0,
-                Marked_Win  = 1,
-                Marked_Lose = 2,
-                Marked_Draw = 4,
-        };
 
         void Run(GameTree& root){
                 ConnectFourLogic logic;

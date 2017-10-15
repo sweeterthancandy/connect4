@@ -3,6 +3,7 @@
 
 #include <set>
 #include <boost/timer/timer.hpp>
+#include <boost/range/adaptor/reversed.hpp>
 
 void Driver0(){
         //BoardInputOutput io;
@@ -289,5 +290,209 @@ int main(){
 }
 #endif
 
+
+template<class BoardType>
+struct LevelGroup{
+        using HashType = decltype(std::declval<BoardType>().Hash());
+        template<class IterType>
+        LevelGroup(Player p, IterType first, IterType last)
+                :player_{p}
+                ,boards_{first,last}
+        {
+                std::sort(boards_.begin(), boards_.end());
+        }
+        auto GetPlayer()const{ return player_; }
+        BoardType const& Find(HashType const& hash)const{
+                auto iter = std::lower_bound( boards_.begin(),
+                                              boards_.end(),
+                                              hash );
+                if( iter->Hash() == hash )
+                        return *iter;
+                throw std::domain_error("hash doesn't exist");
+        }
+        auto begin()const{ return boards_.begin(); }
+        auto end()const{ return boards_.end(); }
+        auto Size()const{ return boards_.size(); }
+        auto const& operator[](size_t idx)const{
+                return boards_[idx];
+        }
+private:
+        Player player_;
+        std::vector<BoardType> boards_;
+};
+/*
+        G0 -> G1 -> G2
+ */
+template<class BoardType>
+struct Group{
+        using LevelType = LevelGroup<BoardType>;
+        void Push(LevelType* level){
+                groups_.push_back(level);
+        }
+        //auto begin()const{ return groups_.begin(); }
+        //auto end()const{ return groups_.end(); }
+        //auto rbegin()const{ return groups_.rbegin(); }
+        //auto rend()const{ return groups_.rend(); }
+        auto Size()const{ return groups_.size(); }
+        auto const& operator[](size_t idx)const{
+                return groups_[idx];
+        }
+private:
+        std::vector<LevelType*> groups_;
+};
+
+int main(){
+        using BoardType = GenericBoard<4,4>;
+        ConnectFourLogic logic;
+        BoardInputOutput io;
+
+        std::vector<Player> p;
+        std::vector< std::set< BoardType > > b;
+
+        p.emplace_back(Player_Hero);
+        b.emplace_back();
+        b.back().emplace();
+
+        Group<BoardType> group;
+        auto first = new LevelGroup<BoardType>(p[0], b[0].begin(), b[0].end() );
+        group.Push(first);
+
+        for(int level=0;;++level){
+                boost::timer::auto_cpu_timer at;
+
+
+                p.emplace_back( NextPlayer(p.back()));
+                b.emplace_back();
+
+                auto width = b.back().begin()->Width();
+                auto height = b.back().begin()->Height();
+
+                auto t = TileForPlayer(p.back());
+
+
+                for( auto const& board : b[b.size()-2] ){
+
+                        auto e = logic.Evaluate(board);
+                        if( e != Eval_NotFinished )
+                                continue;
+
+                        for( unsigned x=0;x!=width;++x){
+                                auto level = Level(board, x);
+                                if( level == height )
+                                        continue;
+                                BoardType next(board);
+                                next.Set(x, level, t);
+
+                                b.back().emplace(std::move(next));
+                        }
+                }
+
+
+
+                if( b.back().size() == 0 ){
+                        p.pop_back();
+                        b.pop_back();
+                        break;
+                }
+        
+                auto first = new LevelGroup<BoardType>(p.back(), b.back().begin(), b.back().end() );
+                group.Push(first);
+                
+                PRINT(level);
+                PRINT(b.back().size());
+                io.Display(*b.back().begin());
+                PRINT(EvalToString(logic.Evaluate(*b.back().begin())));
+        }
+
+        std::vector<
+                std::map<
+                        decltype( std::declval<BoardType>().Hash() ),
+                        int
+                >
+        > m(b.size());
+
+        auto marking_lt = [](auto left, auto right){
+                static std::map<int, int> order = [](){
+                        int precedence[] = {
+                                Marked_Win,
+                                Marked_Win  | Marked_Draw,
+                                Marked_Draw,
+                                Marked_Win  | Marked_Draw | Marked_Lose,
+                                Marked_Win  | Marked_Lose,
+                                Marked_Draw | Marked_Lose,
+                                Marked_Lose,
+                        };
+                        std::map<int, int> ret;
+                        int index = 0;
+                        for( auto mark : precedence ){
+                                ret.emplace(mark, index++);
+                        }
+                        return std::move(ret);
+                }();
+                return order[left] < order[right];
+        };
+
+        for(size_t idx=group.Size();idx!=0;){
+                --idx;
+
+                auto const& sub = *group[idx];
+                PRINT(sub.Size());
+
+                auto cp = sub.GetPlayer();
+
+                for(size_t i=0;i!=sub.Size();++i){
+                        auto const& board = sub[i];
+                        auto h = board.Hash();
+                        auto e = logic.Evaluate(board);
+                        switch(e){
+                        case Eval_Hero:
+                                m[idx][h] = Marked_Win;
+                                break;
+                        case Eval_Villian:
+                                m[idx][h] = Marked_Lose;
+                                break;
+                        case Eval_Draw:
+                                m[idx][h] = Marked_Draw;
+                                break;
+                        case Eval_NotFinished:{
+                                int aggregate = 0;
+                                for( unsigned x=0;x!=board.Width();++x){
+                                        auto level = Level(board, x);
+                                        if( level == board.Height() )
+                                                continue;
+                                        BoardType next(board);
+                                        next.Set(x, level, TileForPlayer(NextPlayer(cp)));
+
+                                        auto nh = next.Hash();
+
+                                        if( m[idx+1][nh] == 0 ){
+                                                PRINT(x);
+                                                io.Display(next);
+                                                PRINT_SEQ((std::get<0>(nh))(std::get<0>(nh)));
+                                                std::cout << "bad marking----------------\n";
+                                        }
+                                        if( cp == Player_Hero ){
+                                                auto cand = m[idx+1][nh];
+                                                if( marking_lt( cand, aggregate) )
+                                                        aggregate = cand;
+                                        } else {
+                                                aggregate |= m[idx+1][nh];
+                                        }
+                                }
+                                m[idx][h] = aggregate;
+                        }
+                                break;
+                        }
+                        io.Display(board);
+                        PRINT_SEQ((std::get<0>(h))(std::get<1>(h))(m[idx][h]));
+                }
+                std::cout << "\n\n";
+                if( idx == group.Size()-4)
+                        break;
+        }
+
+        
+
+}
 
 

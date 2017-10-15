@@ -37,7 +37,8 @@ struct ConnectFourLogic{
                 Eval eval_{Eval_NotFinished};
         };
 
-        Eval Evaluate(Board const& board)const{
+        template<class BoardType>
+        Eval Evaluate(BoardType const& board)const{
                 enum Group{
                         /*
                                /\

@@ -57,6 +57,7 @@ private:
 namespace Detail{
         template<size_t Width, size_t Height>
         struct BoardImpl{
+                using HashType = std::tuple<unsigned long long, unsigned long long>;
                 void Set(size_t x, size_t y, Tile t){
                         auto m = Map_(x,y);
                         switch(t){
@@ -86,7 +87,7 @@ namespace Detail{
                                 return Tile_Hero;
                         return Tile_Villian;
                 }
-                auto Hash()const{
+                HashType Hash()const{
                         return std::make_tuple( mask_.to_ullong(), value_.to_ullong() );
                 }
                 void Debug()const{
@@ -107,6 +108,7 @@ namespace Detail{
 
 template<size_t Width_, size_t Height_>
 struct GenericBoard{
+        using HashType = std::tuple<unsigned long long, unsigned long long>;
         void Set(size_t x, size_t y, Tile t){
                 left_.Set(x,y,t);
                 //right_.Set(Width_ - x - 1, y, t);
@@ -114,7 +116,7 @@ struct GenericBoard{
         Tile Get(size_t x, size_t y)const{
                 return left_.Get(x,y);
         }
-        auto Hash()const{
+        HashType Hash()const{
                 Detail::BoardImpl<Width_, Height_> mirror;
                 for(size_t x=0;x!=Width_;++x){
                         for(size_t y=0;y!=Height_;++y){
@@ -124,23 +126,30 @@ struct GenericBoard{
                 return std::min(left_.Hash(), mirror.Hash() );
                 //return left_.Hash();
         }
-        auto Width()const{ return Width_; }
-        auto Height()const{ return Height_; }
+        static auto Width(){ return Width_; }
+        static auto Height(){ return Height_; }
 
         friend bool operator<(GenericBoard const& left, GenericBoard const& right){
                 return left.Hash() < right.Hash();
         }
+        friend bool operator<(HashType left, GenericBoard const& right){
+                return left < right.Hash();
+        }
+        friend bool operator<(GenericBoard const& left, HashType right){
+                return left.Hash() < right;
+        }
+
 private:
         Detail::BoardImpl<Width_, Height_> left_;
         //Detail::BoardImpl<Width_, Height_> right_;
 };
 
 
-using Board = GenericBoard<7,6>;
+using Board = GenericBoard<5,5>;
 
 
-inline
-unsigned Level(Board const& board, unsigned idx){
+template<class BoardType>
+unsigned Level(BoardType const& board, unsigned idx){
         unsigned y=0;
         for(;y!=board.Height();++y){
                 if( board.Get(idx, y) == Tile_Empty)
@@ -149,10 +158,6 @@ unsigned Level(Board const& board, unsigned idx){
         return y;
 }
 
-inline
-bool CanPlace(Board const& board, unsigned idx){
-        return Level(board, idx) < board.Height();
-}
 
 // returns number of tiles different from Empty
 inline

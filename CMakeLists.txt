@@ -25,3 +25,8 @@ include_directories(include)
 
 add_executable(ConnectFour ConnectFour.cpp)
 target_link_libraries(ConnectFour ${Boost_LIBRARIES})
+
+find_package(GTest REQUIRED)
+add_executable(Test Test.cpp)
+target_link_libraries(Test GTest::GTest GTest::Main)
+target_link_libraries(Test ${Boost_LIBRARIES})

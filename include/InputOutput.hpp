@@ -2,7 +2,8 @@
 #define CONNECT_FOUR_INPUT_OUTPUT_HPP
 
 struct BoardInputOutput{
-        void Display(Board const& board, std::ostream& ostr = std::cout)const{
+        template<class BoardType>
+        void Display(BoardType const& board, std::ostream& ostr = std::cout)const{
                 for(unsigned y=board.Height();y!=0;){
                         --y;
                         for(unsigned x=0;x!=board.Width();++x){
@@ -12,17 +13,18 @@ struct BoardInputOutput{
                 }
                 ostr << "\n";
         }
-        boost::optional<Board> ParseBoard(size_t width, size_t height, std::string str)const{
+        template<class BoardType>
+        boost::optional<BoardType> ParseBoard(std::string str)const{
                 boost::erase_all(str, "|");
                 boost::erase_all(str, "\n");
-                if( str.size() != width*height){
+                if( str.size() != BoardType::Width() * BoardType::Height()){
                         return boost::none;
                 }
-                Board board;
+                BoardType board;
                 auto iter = str.begin();
-                for(size_t y=height;y!=0;){
+                for(size_t y= BoardType::Height();y!=0;){
                         --y;
-                        for(size_t x=0;x!=width;++x){
+                        for(size_t x=0;x!=BoardType::Width() ;++x){
                                 auto t = ParseTile(*iter);
                                 if( t == Tile_NotATile){
                                         std::cerr << "Tile " << *iter << " is not a tile\n";
