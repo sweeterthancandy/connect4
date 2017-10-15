@@ -126,6 +126,10 @@ struct GenericBoard{
         }
         auto Width()const{ return Width_; }
         auto Height()const{ return Height_; }
+
+        friend bool operator<(GenericBoard const& left, GenericBoard const& right){
+                return left.Hash() < right.Hash();
+        }
 private:
         Detail::BoardImpl<Width_, Height_> left_;
         //Detail::BoardImpl<Width_, Height_> right_;

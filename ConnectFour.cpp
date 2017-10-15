@@ -194,26 +194,37 @@ private:
 
 #include <boost/pool/object_pool.hpp>
 
-struct NodeAllocator{
-        using hash_t = decltype(std::declval<GameContext>().Hash());
+/*
+        The essence of the problem is that I can't easily work backwards
+        in this game. This is because I can't git the game tree
+        with depth of 42 into memory. I also have to keep results in 
+        memory, because otherwise I'll be re-computing the result
+        for a certain board for each path from it.
+                What I need to do is create auxiallary sets of all the
+        board at each depth. From this, I can work backwards.
+
+*/
+
+#if 0
+struct BoardAllocator{
+        using hash_t = decltype(std::declval<Board>().Hash());
         // (was_allocated, ptr)
-        std::pair<bool, Node*> FindOrAllocate(GameContext const& ctx){
-                auto h = ctx.Hash();
+        std::pair<bool, Board*> FindOrAllocate(Board const& brd){
+                auto h = brd.Hash();
                 auto iter = nodes_.find(h);
                 if( iter == nodes_.end()){
-                        //auto tmp = new Node{ctx};
-                        auto tmp = pool_.construct(ctx);
+                        auto tmp = pool_.construct(brd);
                         nodes_.emplace(h, tmp);
                         return std::make_pair(true, tmp);
                 }
                 return std::make_pair(false, iter->second);
         }
 private:
-        boost::object_pool<Node> pool_;
-        std::map<hash_t, Node*> nodes_;
+        boost::object_pool<Board> pool_;
+        std::map<hash_t, Board*> nodes_;
 };
 
-SubGraph* CreateSubGraph(NodeAllocator& alloc, SubGraph const& entry){
+SubGraph* CreateSubGraph(BoardAllocator& alloc, SubGraph const& entry){
         ConnectFourLogic logic;
 
         SubGraph* result = new SubGraph;
@@ -243,9 +254,6 @@ SubGraph* CreateSubGraph(NodeAllocator& alloc, SubGraph const& entry){
         
         return result;
 }
-
-
-
 int main(){
 
         Graph graph;
@@ -254,12 +262,12 @@ int main(){
         //start->Push( alloc.FindOrAllocate(GameContext{}).second );
         graph.Push(start);
 
-        std::vector< std::unique_ptr<NodeAllocator> > alloc;
+        std::vector< std::unique_ptr<BoardAllocator> > alloc;
 
         for(int i=0;;++i){
                 //if( alloc.size())
                         //alloc.back().reset();
-                alloc.emplace_back( std::make_unique<NodeAllocator>() );
+                alloc.emplace_back( std::make_unique<BoardAllocator>() );
                 boost::timer::auto_cpu_timer at;
                 graph.Back()->Debug();
 
@@ -279,3 +287,7 @@ int main(){
 
 
 }
+#endif
+
+
+
