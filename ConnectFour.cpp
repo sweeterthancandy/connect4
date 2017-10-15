@@ -1,4 +1,5 @@
 #include "ConnectFour.hpp"
+#include <boost/format.hpp>
 
 struct Node;
 
@@ -83,7 +84,7 @@ GameTree GenerateGameTree(Board const& board = Board{}){
 
                         ptr->AddEdge( x, iter->second);
                 }
-                if( nodes.size() % 100 == 0 )
+                if( nodes.size() % 10000 == 0 )
                         PRINT( nodes.size() );
         }
         
@@ -191,6 +192,51 @@ private:
         std::map<Node const*, int > marks_;
 };
 
+struct Profiler{
+        void Run(GameTree& root){
+                std::map<Node const*, int > marked;
+                std::vector< Node const* > ticker = { root.GetStart() };
+                std::map<std::string, unsigned> profile_;
+                for( ; ticker.size(); ){
+                        auto ptr = ticker.back();
+                        ticker.pop_back();
+                        for( auto const& edge : *ptr ){
+                                if( marked.count(edge.GetNode()) == 0 ){
+                                        ticker.emplace_back( edge.GetNode() );
+                                }
+                        }
+
+                        if( marked.count(ptr) != 0 )
+                                continue;
+                        marked.emplace(ptr, 1);
+
+                        std::map<Tile, int> hist;
+                        auto const& board = ptr->Ctx().GetBoard();
+                        for(size_t x=0;x!=ptr->Ctx().BoardWidth();++x){
+
+                                for(size_t y=0;y!=ptr->Ctx().BoardHeight();++y){
+                                        ++hist[board.Get(x,y)];
+                                }
+                        }
+                        std::stringstream sstr;
+                        sstr << "{";
+                        bool first = true;
+                        for(auto const& p : hist ){
+                                sstr << ( first ? (first=false, "") : ", ");
+                                sstr << TileToMetaString(p.first) << ":" << p.second;
+                        }
+                        sstr << "}";
+                        ++profile_[sstr.str()];
+                        if( marked.size() % 10000 == 0 )
+                                PRINT(marked.size());
+                }
+                for( auto const& p : profile_ ){
+                        std::cout << boost::format("%-8s => %s") 
+                                % p.second % p.first << "\n";
+                }
+        }
+};
+
 int main(){
         //BoardInputOutput io;
         //auto board = io.ParseBoard(6,5,"      "
@@ -204,6 +250,8 @@ int main(){
         marker.Run(root);
 
         PRINT( marker.Lookup(root.GetStart() ) );
+        Profiler prof;
+        prof.Run(root);
 
 
 }

@@ -72,7 +72,19 @@ std::string TileToString(Tile e) {
         case Tile_Villian:
                 return "O";
         default:
-                return "";
+                return "Tile{" + boost::lexical_cast<std::string>(e) + "}";
+        }
+}
+std::string TileToMetaString(Tile e) {
+        switch (e) {
+        case Tile_Empty:
+                return "Empty";
+        case Tile_Hero:
+                return "Hero";
+        case Tile_Villian:
+                return "Villian";
+        default:
+                return "Tile{" + boost::lexical_cast<std::string>(e) + "}";
         }
 }
 
