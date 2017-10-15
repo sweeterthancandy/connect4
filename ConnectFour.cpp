@@ -211,6 +211,9 @@ struct Profiler{
                         marked.emplace(ptr, 1);
 
                         std::map<Tile, int> hist;
+                        hist[Tile_Empty];
+                        hist[Tile_Hero];
+                        hist[Tile_Villian];
                         auto const& board = ptr->Ctx().GetBoard();
                         for(size_t x=0;x!=ptr->Ctx().BoardWidth();++x){
 
