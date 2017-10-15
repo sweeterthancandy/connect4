@@ -5,7 +5,7 @@
 #include "InputOutput.hpp"
 
 struct GameContext{
-        explicit GameContext(Board const& board):
+        explicit GameContext(Board const& board = Board{}):
                 board_{board}
         {}
         auto BoardHeight()const{

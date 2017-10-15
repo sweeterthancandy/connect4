@@ -42,6 +42,11 @@ private:
         Node* start_;
 };
 
+/*
+        Idea here is that I can create a subgraph for each
+        board popcount
+ */
+
 GameTree GenerateGameTree(Board const& board = Board{}){
         ConnectFourLogic logic;
         std::map<decltype(std::declval<GameContext>().Hash()), Node*> nodes;

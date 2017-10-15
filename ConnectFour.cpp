@@ -23,7 +23,6 @@ void Driver0(){
 
 }
 
-#include <boost/pool/object_pool.hpp>
 
 /*
         This represents the level of the board,
@@ -104,7 +103,6 @@ std::string Bits(unsigned long long val){
 }
 
 void PermuattionTest(){
-        boost::object_pool<Node> pool;
 
         #if 0
         for(int k=0;;++k){
@@ -158,10 +156,126 @@ void PermuattionTest(){
 
 }
 
+struct SubGraph{
+        void Push(Node* ptr){
+                start_.push_back(ptr);
+        }
+        auto begin()const{ return start_.begin(); }
+        auto end()const{ return start_.end(); }
+        void Debug()const{
+                PRINT( start_.size() );
+                #if 0
+                for( auto ptr : start_){
+                        ptr->Ctx().Display();
+                }
+                #endif
+        }
+private:
+        std::vector<Node*> start_;
+};
+
+struct Graph{
+        void Push(SubGraph* sub){
+                subs_.push_back(sub);
+        }
+        auto begin()const{ return subs_.begin(); }
+        auto end()const{ return subs_.end(); }
+        auto begin(){ return subs_.begin(); }
+        auto end(){ return subs_.end(); }
+        auto Back(){  return subs_.back(); }
+        // Assume first one only have one entry
+        auto Start(){ return *subs_.front()->begin(); }
+        auto At(size_t idx)const{ return subs_[idx]; }
+        auto Size()const{ return subs_.size(); }
+private:
+        // increasing popcount
+        std::vector<SubGraph*> subs_;
+};
+
+#include <boost/pool/object_pool.hpp>
+
+struct NodeAllocator{
+        using hash_t = decltype(std::declval<GameContext>().Hash());
+        // (was_allocated, ptr)
+        std::pair<bool, Node*> FindOrAllocate(GameContext const& ctx){
+                auto h = ctx.Hash();
+                auto iter = nodes_.find(h);
+                if( iter == nodes_.end()){
+                        //auto tmp = new Node{ctx};
+                        auto tmp = pool_.construct(ctx);
+                        nodes_.emplace(h, tmp);
+                        return std::make_pair(true, tmp);
+                }
+                return std::make_pair(false, iter->second);
+        }
+private:
+        boost::object_pool<Node> pool_;
+        std::map<hash_t, Node*> nodes_;
+};
+
+SubGraph* CreateSubGraph(NodeAllocator& alloc, SubGraph const& entry){
+        ConnectFourLogic logic;
+
+        SubGraph* result = new SubGraph;
+
+        for( auto node : entry){
+                auto const& ctx{node->Ctx()};
+
+                // try to place a tile
+                for( unsigned x=0;x!=ctx.BoardWidth();++x){
+                        if( ! CanPlace( ctx.GetBoard(), x) ){
+                                continue;
+                        }
+                        GameContext nextCtx{ctx};
+                        nextCtx.Place(logic, x);
+
+                        //nextCtx.Display();
+
+
+                        auto ret = alloc.FindOrAllocate(nextCtx);
+                        if( ret.first) {
+                                result->Push(ret.second);
+                        }
+
+                        node->AddEdge( x, ret.second );
+                }
+        }
+        
+        return result;
+}
+
+
 
 int main(){
-        auto root = GenerateGameTree();
 
-        Profiler prof;
-        prof.Run(root);
+        Graph graph;
+        SubGraph* start = new SubGraph;
+        start->Push( new Node{GameContext{}} );
+        //start->Push( alloc.FindOrAllocate(GameContext{}).second );
+        graph.Push(start);
+
+        std::vector< std::unique_ptr<NodeAllocator> > alloc;
+
+        for(int i=0;;++i){
+                //if( alloc.size())
+                        //alloc.back().reset();
+                alloc.emplace_back( std::make_unique<NodeAllocator>() );
+                boost::timer::auto_cpu_timer at;
+                graph.Back()->Debug();
+
+                auto next = CreateSubGraph(*alloc.back(), *graph.Back() );
+
+                graph.Push(next);
+                //if( i == 10 )
+                        //break;
+                PRINT(i);
+
+                if( alloc.size() >= 3 ){
+                        alloc[alloc.size()-2].reset();
+                        delete graph.At(alloc.size()-2);
+                }
+                PRINT( sizeof(Node) );
+        }
+
+
 }
