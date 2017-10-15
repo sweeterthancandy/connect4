@@ -2,8 +2,16 @@
 #include "Graph.hpp"
 
 #include <set>
+#include <fstream>
 #include <boost/timer/timer.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+
+#include <boost/serialization/vector.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
+#include <boost/variant.hpp>
+
 
 void Driver0(){
         //BoardInputOutput io;
@@ -290,10 +298,10 @@ int main(){
 }
 #endif
 
-
 template<class BoardType>
 struct LevelGroup{
         using HashType = decltype(std::declval<BoardType>().Hash());
+        LevelGroup():player_{Player_NotAPlayer}{}
         template<class IterType>
         LevelGroup(Player p, IterType first, IterType last)
                 :player_{p}
@@ -314,35 +322,103 @@ struct LevelGroup{
         auto end()const{ return boards_.end(); }
         auto Size()const{ return boards_.size(); }
         auto const& operator[](size_t idx)const{
-                return boards_[idx];
+                return boards_.at(idx);
+        }
+private:
+        friend class boost::serialization::access;
+
+        template <typename Archive>
+        void serialize(Archive &ar, const unsigned int version){
+                ar & player_;
+                ar & boards_;
         }
 private:
         Player player_;
         std::vector<BoardType> boards_;
 };
+
+
+
 /*
         G0 -> G1 -> G2
  */
 template<class BoardType>
-struct Group{
+struct Group
+{
         using LevelType = LevelGroup<BoardType>;
-        void Push(LevelType* level){
-                groups_.push_back(level);
+
+        struct MemoryManager{
+                MemoryManager(std::string filename,
+                              std::unique_ptr<LevelType> ptr):
+                        filename_{std::move(filename)},
+                        ptr_{std::move(ptr)}
+                {
+                        //PRINT(filename_);
+                }
+                void Close(){
+                        //std::cerr << "Closing " << filename_ << "\n";
+                        ptr_.reset();
+                }
+                bool Load(){
+                        if( !! ptr_.get() )
+                                return false;
+                        //std::cerr << "Loading " << filename_ << "\n";
+                        std::ifstream ifs(filename_);
+                        if( ! ifs.is_open()){
+                                std::cerr << "Unable to open " << filename_ << "\n";
+                                return false;
+                        }
+                        boost::archive::text_iarchive ia{ifs};
+                        ptr_.reset(new LevelType{});
+                        ia >> *ptr_;
+                        return true;
+                }
+                bool Save()const{
+                        //std::cerr << "Saving " << filename_ << "\n";
+                        if( ! ptr_.get() ){
+                                std::cerr << "Nothing to save\n";
+                                return false;
+                        }
+                        std::ofstream of(filename_);
+                        if( ! of.is_open()){
+                                std::cerr << "Unable to open " << filename_ << "\n";
+                                return false;
+                        }
+                        boost::archive::text_oarchive oa{of};
+                        oa << *ptr_;
+                        return true;
+                }
+                LevelType const* operator->(){
+                        // Autoload
+                        Load();
+                        return ptr_.get();
+                }
+                LevelType const& operator*(){
+                        // Autoload
+                        Load();
+                        return *ptr_;
+                }
+        private:
+                std::string filename_;
+                mutable std::unique_ptr<LevelType> ptr_;
+        };
+
+        auto& DeclSubGroup(std::string const& filename, std::unique_ptr<LevelType> ptr){
+                groups_.emplace_back(filename, std::move(ptr));
+                return groups_.back();
         }
-        //auto begin()const{ return groups_.begin(); }
-        //auto end()const{ return groups_.end(); }
-        //auto rbegin()const{ return groups_.rbegin(); }
-        //auto rend()const{ return groups_.rend(); }
         auto Size()const{ return groups_.size(); }
-        auto const& operator[](size_t idx)const{
-                return groups_[idx];
+        auto& operator[](size_t idx){
+                return groups_.at(idx);
         }
+
 private:
-        std::vector<LevelType*> groups_;
+        mutable std::vector<MemoryManager> groups_;
 };
 
-int main(){
+void Driver2(){
         using BoardType = GenericBoard<7,6>;
+        //using BoardType = GenericBoard<4,4>;
         ConnectFourLogic logic;
         BoardInputOutput io;
 
@@ -354,10 +430,19 @@ int main(){
         b.back().emplace();
 
         Group<BoardType> group;
-        auto first = new LevelGroup<BoardType>(p[0], b[0].begin(), b[0].end() );
-        group.Push(first);
 
-        for(int level=0;;++level){
+        int level=0;
+
+        auto namebroker = [](int lvl){
+                std::stringstream sstr;
+                sstr << BoardType::Width() << "x" << BoardType::Height() << "Depth" << lvl << ".bin";
+                return sstr.str();
+        };
+
+        auto& firstSub = group.DeclSubGroup(namebroker(level++), std::make_unique<LevelGroup<BoardType> >(p.back(), b.back().begin(), b.back().end() ));
+        firstSub.Save();
+
+        for(;;){
                 boost::timer::auto_cpu_timer at;
 
 
@@ -402,8 +487,13 @@ int main(){
                         break;
                 }
         
-                auto first = new LevelGroup<BoardType>(p.back(), b.back().begin(), b.back().end() );
-                group.Push(first);
+                auto& sub = group.DeclSubGroup(namebroker(level++), std::make_unique<LevelGroup<BoardType> >(p.back(), b.back().begin(), b.back().end() ));
+                sub.Save();
+
+                if( group.Size() > 2 ){
+                        group[group.Size()-2].Close();
+                }
+                
                 
                 PRINT(level);
                 PRINT(b.back().size());
@@ -443,7 +533,9 @@ int main(){
         for(size_t idx=group.Size();idx!=0;){
                 --idx;
 
-                auto const& sub = *group[idx];
+                auto& ctrl = group[idx];
+                ctrl.Load();
+                auto const& sub = *ctrl;
 
                 auto cp = sub.GetPlayer();
                 
@@ -506,6 +598,8 @@ int main(){
                         //PRINT_SEQ((std::get<0>(h))(std::get<1>(h))(m[idx][h]));
                 }
                 std::cout << "\n\n";
+                ctrl.Close();
+
                 //if( idx == group.Size()-4)
                         //break;
         }
@@ -517,4 +611,6 @@ int main(){
 
 }
 
-
+int main(){
+        Driver2();
+}

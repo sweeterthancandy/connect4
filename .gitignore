@@ -7,3 +7,4 @@ build.ninja
 cmake_install.cmake
 rules.ninja
 tags
+*.bin

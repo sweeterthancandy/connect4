@@ -1,6 +1,7 @@
 #ifndef CONNECT_FOUR_BOARD_HPP
 #define CONNECT_FOUR_BOARD_HPP
 
+#include <boost/serialization/bitset.hpp>
 #include "Decl.hpp"
 
 #if 0
@@ -95,6 +96,14 @@ namespace Detail{
                         PRINT( value_.to_string() );
                 }
         private:
+                friend class boost::serialization::access;
+
+                template <typename Archive>
+                void serialize(Archive &ar, const unsigned int version){
+                        ar & mask_;
+                        ar & value_;
+                }
+        private:
                 static constexpr size_t BitSize(){
                         return Width * Height;
                 }
@@ -137,6 +146,13 @@ struct GenericBoard{
         }
         friend bool operator<(GenericBoard const& left, HashType right){
                 return left.Hash() < right;
+        }
+private:
+        friend class boost::serialization::access;
+
+        template <typename Archive>
+        void serialize(Archive &ar, const unsigned int version){
+                ar & left_;
         }
 
 private:

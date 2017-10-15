@@ -17,7 +17,7 @@ endif()
 
 
 
-find_package(Boost REQUIRED COMPONENTS system timer)
+find_package(Boost REQUIRED COMPONENTS system timer serialization)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
