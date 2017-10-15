@@ -132,7 +132,7 @@ private:
 };
 
 
-using Board = GenericBoard<5,6>;
+using Board = GenericBoard<5,4>;
 
 
 inline
