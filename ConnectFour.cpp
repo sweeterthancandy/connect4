@@ -342,7 +342,7 @@ private:
 };
 
 int main(){
-        using BoardType = GenericBoard<4,4>;
+        using BoardType = GenericBoard<7,6>;
         ConnectFourLogic logic;
         BoardInputOutput io;
 
@@ -367,10 +367,10 @@ int main(){
                 auto width = b.back().begin()->Width();
                 auto height = b.back().begin()->Height();
 
-                auto t = TileForPlayer(p.back());
+                auto t = TileForPlayer(NextPlayer(p.back()));
 
 
-                for( auto const& board : b[b.size()-2] ){
+                for( auto const& board : b[b.size()-2]){
 
                         auto e = logic.Evaluate(board);
                         if( e != Eval_NotFinished )
@@ -383,7 +383,14 @@ int main(){
                                 BoardType next(board);
                                 next.Set(x, level, t);
 
-                                b.back().emplace(std::move(next));
+                                b.back().emplace(next);
+
+                                //io.Display(next);
+                                //std::stringstream sstr;
+                                //sstr 
+                                        //<< io.ToString(board) << " => "
+                                        //<< io.ToString(next);
+                                //std::cout << sstr.str() << "\n";
                         }
                 }
 
@@ -421,6 +428,7 @@ int main(){
                                 Marked_Win  | Marked_Lose,
                                 Marked_Draw | Marked_Lose,
                                 Marked_Lose,
+                                Marked_Zero, 
                         };
                         std::map<int, int> ret;
                         int index = 0;
@@ -436,14 +444,19 @@ int main(){
                 --idx;
 
                 auto const& sub = *group[idx];
-                PRINT(sub.Size());
 
                 auto cp = sub.GetPlayer();
+                
+                PRINT(sub.Size());
+                PRINT(cp);
 
                 for(size_t i=0;i!=sub.Size();++i){
                         auto const& board = sub[i];
                         auto h = board.Hash();
                         auto e = logic.Evaluate(board);
+
+                        //std::cout << "processing " << io.ToString(board) << "\n";
+                        //PRINT(EvalToString(e));
                         switch(e){
                         case Eval_Hero:
                                 m[idx][h] = Marked_Win;
@@ -461,15 +474,21 @@ int main(){
                                         if( level == board.Height() )
                                                 continue;
                                         BoardType next(board);
-                                        next.Set(x, level, TileForPlayer(NextPlayer(cp)));
+                                        next.Set(x, level, TileForPlayer(cp));
 
                                         auto nh = next.Hash();
 
                                         if( m[idx+1][nh] == 0 ){
                                                 PRINT(x);
+                                                std::cout << "####### FROM #######\n";
+                                                io.Display(board);
+                                                std::cout << io.ToString(board) << "\n";
+                                                std::cout << "####### TO   #######\n";
                                                 io.Display(next);
-                                                PRINT_SEQ((std::get<0>(nh))(std::get<0>(nh)));
+                                                std::cout << io.ToString(next) << "\n";
+                                                PRINT_SEQ((std::get<0>(nh))(std::get<1>(nh)));
                                                 std::cout << "bad marking----------------\n";
+                                                std::cout << "####### END  #######\n";
                                         }
                                         if( cp == Player_Hero ){
                                                 auto cand = m[idx+1][nh];
@@ -483,13 +502,16 @@ int main(){
                         }
                                 break;
                         }
-                        io.Display(board);
-                        PRINT_SEQ((std::get<0>(h))(std::get<1>(h))(m[idx][h]));
+                        //io.Display(board);
+                        //PRINT_SEQ((std::get<0>(h))(std::get<1>(h))(m[idx][h]));
                 }
                 std::cout << "\n\n";
-                if( idx == group.Size()-4)
-                        break;
+                //if( idx == group.Size()-4)
+                        //break;
         }
+
+        PRINT( m[0].size() );
+        PRINT( m[0].begin()->second );
 
         
 

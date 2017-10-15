@@ -14,6 +14,28 @@ struct BoardInputOutput{
                 ostr << "\n";
         }
         template<class BoardType>
+        std::string ToString(BoardType const& board)const{
+                std::stringstream sstr;
+                for(unsigned y=board.Height();y!=0;){
+                        --y;
+                        for(unsigned x=0;x!=board.Width();++x){
+                                switch (board.Get(x,y)) {
+                                default:
+                                case Tile_Empty:
+                                        sstr << "_";
+                                        break;
+                                case Tile_Hero:
+                                        sstr << "X";
+                                        break;
+                                case Tile_Villian:
+                                        sstr << "O";
+                                        break;
+                                }
+                        }
+                }
+                return sstr.str();
+        }
+        template<class BoardType>
         boost::optional<BoardType> ParseBoard(std::string str)const{
                 boost::erase_all(str, "|");
                 boost::erase_all(str, "\n");
