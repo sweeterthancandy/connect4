@@ -12,6 +12,40 @@
 
 #include <boost/variant.hpp>
 
+/*
+        We can solve connect as follows. First to comprehand the computational
+        complexity, note that for every square on a 7x6 board we can have
+        either {empty,hero,villian}. This means the number of boards is
+        bounded above by 3^{6*7} < 2^66, and I observe about
+        2.1^n number.
+                All in all, this means that we can't simply let my computer
+        solve as it won't fit in memory (I need to store the result
+        somehow, because of the way boards are constructed I would 
+        be recomputing the same board from different paths). 
+                The way solve solve this computation problem, is to first
+        work forwards, creating a database of boards, starting from
+        an empty board db_0, and then iterativley produce 
+                        db_{i+1} = f(db_i),
+        untill we reach the end of the game tree. One we have the set
+                        DB = {db_i},
+        we then create another database
+                        s_i = f(db_i, s_{i+1}),
+        where s_i as a database, evaulating each configuration. This
+        iterative step.
+
+        The algebra for evaluating the result database, is as follows.
+        For each board b, where we have i moves, if b is a terminal
+        board, we assign r(b) one of {Win,Lose,Draw} depending on the
+        evaulation, and we are done.
+                If b is a non-terminal, we then take the set all 
+
+
+
+
+        
+
+
+ */
 
 void Driver0(){
         //BoardInputOutput io;
@@ -299,6 +333,12 @@ int main(){
 #endif
 
 template<class BoardType>
+struct FileBackedBoardSet{
+private:
+        std::vector<BoardType> boards_;
+};
+
+template<class BoardType>
 struct LevelGroup{
         using HashType = decltype(std::declval<BoardType>().Hash());
         LevelGroup():player_{Player_NotAPlayer}{}
@@ -338,9 +378,34 @@ private:
 };
 
 
+#if 0
+template<class BoardType>
+struct LevelGroupProducer{
+        using LevelGroupType = LevelGroup<BoardType>;
+        virtual ~LevelGroupProducer()=default;
+
+        virtual
+        std::unique_ptr<LevelGroupType> ProduceNextInSequence(LevelGroupType const& prev)const=0;
+};
+
+template<class BoardType>
+struct LevelGroupProducerFactory{
+        using LevelGroupProducerType = LevelGroupProducer<BoardType>;
+        std::unique_ptr<LevelGroupProducerType> MakeForLevel(int level)const=0;
+};
+#endif
+
+
 
 /*
         G0 -> G1 -> G2
+
+        G1 = Generate(G0)
+        G2 = Generate(G1)
+        ...
+
+
+        Because a single group is too large to have in memory
  */
 template<class BoardType>
 struct Group

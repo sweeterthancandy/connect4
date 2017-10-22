@@ -1,42 +1,18 @@
-#ifndef CONNECT_FOUR_GAME_LOGIC_HPP
-#define CONNECT_FOUR_GAME_LOGIC_HPP
+#ifndef CONNECT_FOUR_TTT_LOGIC_HPP
+#define CONNECT_FOUR_TTT_LOGIC_HPP
 
-struct ConnectFourLogic{
-        struct SequenceConsumer{
-                Eval Consume(Tile t){
-                        if( t == last_ ){
-                                // Case we have 2 consective Hero or Villian
-                                ++count_;
-                                if( count_ == 4 && eval_ == Eval_NotFinished ){
-                                        switch(last_){
-                                        case Tile_Hero:
-                                                eval_ = Eval_Hero;
-                                                break;
-                                        case Tile_Villian:
-                                                eval_ = Eval_Villian;
-                                                break;
-                                        }
-                                }
-                        } else if( t == Tile_Empty){
-                                // Case we run into a blank
-                                count_ = 0;
-                                last_ = Tile_NotATile;
-                        } else{
-                                // Case we start a new run
-                                count_ = 1;
-                                last_ = t;
+struct TickTackToeLogic{
+
+        template<class BoardType, class V>
+        void ForEachMove(BoardType const& board, Player p, V v)const{
+                static_assert( BoardType::Width() == 3 ,"");
+                static_assert( BoardType::Height() == 3 ,"");
+
+                for( unsigned x=0;x!=BoardType::Width();++x){
+                        for( unsigned y=0;y!=BoardType::Width();++x){
                         }
-                        return Get();
                 }
-                Eval Get()const{
-                        return eval_;
-                }
-        private:
-                Tile last_{Tile_NotATile};
-                size_t count_{0};
-                Eval eval_{Eval_NotFinished};
-        };
-
+        }
         template<class BoardType>
         Eval Evaluate(BoardType const& board)const{
                 enum Group{
@@ -174,4 +150,4 @@ struct ConnectFourLogic{
                 return Eval_Draw;
         }
 };
-#endif // CONNECT_FOUR_GAME_LOGIC_HPP
+#endif // CONNECT_FOUR_TTT_LOGIC_HPP
